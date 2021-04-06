@@ -6,11 +6,19 @@
 #include <iostream>
 using namespace std;
 
+// refer https://zhuanlan.zhihu.com/p/53527981
 /*
 每个进程都有自己的虚拟地址空间，一般32为机器是4G大小（就是寻址大小2^32），其中1-3G是用户地址空间，3-4G是是内核地址空间。
 当父进程创建子进程时，子进程复制父进程的代码段和数据段，即clone父进程的1-3G的内容，而3-4G的内核只需要重新映射下到物理地址的内核即可。
 子进程几乎复制了所有的父进程内容，包括pcb，但是在复制时，系统会修改子进程的pid来和父进程区别。
 因为子进程会把父进程的pcb完全拷贝过来，所以会记录程序运行到哪了，子进程会从fork之后的代码段运行。
+*/
+
+/*
+fork()的时候，父进程的虚拟地址映射着物理内存的实际的物理地址，clone()的时候，并不是在物理地址中直接再复制一份和父进程一样的物理内存块，
+而是子进程的虚拟地址也直接映射到同一物理内存块中，这就是读时共享。那这样的话不是就共享变量了吗？不就和前面说的矛盾了吗？ 
+关键：当你操作这个物理内存块时（比如修改变量的值），再复制该部分的实际物理内存到子进程中，并不是全部复制。这就是写时复制。
+所以，当你在后面的程序中操作遍历n时，就会另辟内存块给子进程，表示这两者的独立。这就是读时共享，写时复制。
 */
 
 /*
@@ -55,7 +63,7 @@ int main()
         // while(1);
     }
     else if (pid == 0)
-    { //child process clone the pcb of parent, but OS modify the pid to distinguish them.
+    { //child process clone the pcb of parent, but the pid which in pcb will get from the OS and get a new pid.
         pid_t current = getpid();
         cout << "i am child,pid:" << pid << ",currentPid = " << current << endl;
         //shared on read, copy on write.
